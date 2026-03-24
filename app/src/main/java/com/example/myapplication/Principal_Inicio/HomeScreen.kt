@@ -1,5 +1,6 @@
 package com.example.myapplication.Principal_Inicio
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -7,34 +8,48 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
+import coil.compose.rememberAsyncImagePainter
+import com.example.myapplication.FoodItem
+import com.example.myapplication.SessionManager
 import com.example.myapplication.componentes.CustomBottomBar
 import com.example.myapplication.ui.theme.*
+import java.util.UUID
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(navController: NavHostController) {
+    val context = LocalContext.current
+    val sessionManager = remember { SessionManager(context) }
+    val userName = sessionManager.getNombre()
+    val profileImageUri = sessionManager.getImage()
+    
     var menuExpanded by remember { mutableStateOf(false) }
+    var showAddDialog by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
                     Column {
-                        Text("Hola, Alumno", fontSize = 14.sp, color = TextGray)
+                        Text("Hola, $userName", fontSize = 14.sp, color = TextGray)
                         Text("Bienvenido a Yummy!", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = MainPurple)
                     }
                 },
@@ -43,7 +58,8 @@ fun HomeScreen(navController: NavHostController) {
                         Box(
                             modifier = Modifier
                                 .size(40.dp)
-                                .background(Color.LightGray, CircleShape)
+                                .clip(CircleShape)
+                                .background(Color.LightGray)
                                 .clickable { 
                                     if (menuExpanded) {
                                         menuExpanded = false
@@ -54,7 +70,16 @@ fun HomeScreen(navController: NavHostController) {
                                 },
                             contentAlignment = Alignment.Center
                         ) {
-                            Icon(Icons.Default.Person, contentDescription = "Perfil", tint = Color.DarkGray)
+                            if (profileImageUri != null) {
+                                Image(
+                                    painter = rememberAsyncImagePainter(profileImageUri),
+                                    contentDescription = null,
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentScale = ContentScale.Crop
+                                )
+                            } else {
+                                Icon(Icons.Default.Person, contentDescription = "Perfil", tint = Color.DarkGray)
+                            }
                         }
                         
                         DropdownMenu(
@@ -80,14 +105,15 @@ fun HomeScreen(navController: NavHostController) {
                                 leadingIcon = { Icon(Icons.Default.Settings, contentDescription = null) }
                             )
                             DropdownMenuItem(
-                                text = { Text("Notificaciones") },
-                                onClick = { menuExpanded = false },
-                                leadingIcon = { Icon(Icons.Default.Notifications, contentDescription = null) }
-                            )
-                            DropdownMenuItem(
-                                text = { Text("Ayuda") },
-                                onClick = { menuExpanded = false },
-                                leadingIcon = { Icon(Icons.Default.Help, contentDescription = null) }
+                                text = { Text("Cerrar Sesión") },
+                                onClick = { 
+                                    menuExpanded = false
+                                    sessionManager.logout()
+                                    navController.navigate("In_session") {
+                                        popUpTo(0) { inclusive = true }
+                                    }
+                                },
+                                leadingIcon = { Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = null) }
                             )
                         }
                     }
@@ -126,6 +152,12 @@ fun HomeScreen(navController: NavHostController) {
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             Text("Resumen Semanal", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                            Surface(
+                                color = Color.White.copy(alpha = 0.2f),
+                                shape = RoundedCornerShape(8.dp)
+                            ) {
+                                Text("IA Powered", color = Color.White, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp), fontSize = 10.sp)
+                            }
                         }
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
@@ -134,6 +166,14 @@ fun HomeScreen(navController: NavHostController) {
                             fontSize = 14.sp
                         )
                         Spacer(modifier = Modifier.height(16.dp))
+                        Button(
+                            onClick = {},
+                            colors = ButtonDefaults.buttonColors(containerColor = Color.White),
+                            shape = RoundedCornerShape(12.dp),
+                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
+                        ) {
+                            Text("Ver Reporte IA >", color = MainPurple, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        }
                     }
                 }
 
@@ -162,11 +202,82 @@ fun HomeScreen(navController: NavHostController) {
                     horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     ActionButton(Icons.Default.QrCode, "Escanear", modifier = Modifier.weight(1f))
-                    ActionButton(Icons.Default.Add, "Manual", modifier = Modifier.weight(1f))
+                    ActionButton(
+                        icon = Icons.Default.Add, 
+                        label = "Manual", 
+                        modifier = Modifier.weight(1f),
+                        onClick = { showAddDialog = true }
+                    )
                 }
             }
         }
+
+        if (showAddDialog) {
+            HomeFoodItemDialog(
+                onDismiss = { showAddDialog = false },
+                onConfirm = { newItem ->
+                    sessionManager.saveFoodItem(newItem)
+                    showAddDialog = false
+                    navController.navigate("RefriScreen")
+                }
+            )
+        }
     }
+}
+
+@Composable
+fun HomeFoodItemDialog(
+    initialItem: FoodItem? = null,
+    onDismiss: () -> Unit,
+    onConfirm: (FoodItem) -> Unit
+) {
+    var name by remember { mutableStateOf(initialItem?.name ?: "") }
+    var details by remember { mutableStateOf(initialItem?.details ?: "") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(if (initialItem == null) "Agregar Alimento" else "Editar Alimento") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text("Nombre") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = details,
+                    onValueChange = { details = it },
+                    label = { Text("Detalles (ej: 1 Lt • Exp: 2026)") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    if (name.isNotBlank()) {
+                        onConfirm(
+                            FoodItem(
+                                id = initialItem?.id ?: UUID.randomUUID().toString(),
+                                name = name,
+                                details = details,
+                                colorValue = initialItem?.colorValue ?: 0xFFFFFFFF.toInt()
+                            )
+                        )
+                    }
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = MainPurple)
+            ) {
+                Text("Guardar")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancelar")
+            }
+        }
+    )
 }
 
 @Composable
@@ -192,11 +303,13 @@ fun ExpirationItem() {
 }
 
 @Composable
-fun ActionButton(icon: ImageVector, label: String, modifier: Modifier = Modifier) {
+fun ActionButton(icon: ImageVector, label: String, modifier: Modifier = Modifier, onClick: () -> Unit = {}) {
     Card(
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
-        modifier = modifier.height(100.dp)
+        modifier = modifier
+            .height(100.dp)
+            .clickable(onClick = onClick)
     ) {
         Column(
             modifier = Modifier.fillMaxSize(),

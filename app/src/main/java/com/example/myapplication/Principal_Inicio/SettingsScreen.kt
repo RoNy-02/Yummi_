@@ -1,5 +1,11 @@
 package com.example.myapplication.Principal_Inicio
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -17,21 +23,50 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
+import androidx.navigation.NavController
+import androidx.navigation.compose.rememberNavController
 import com.example.myapplication.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsScreen() {
+fun SettingsScreen(navController: NavController = rememberNavController()) {
+    val context = LocalContext.current
+    
+    // Estado para el switch de notificaciones
+    var notificationsEnabled by remember { 
+        mutableStateOf(
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+            } else {
+                true // En versiones anteriores a Android 13, las notificaciones están activas por defecto
+            }
+        ) 
+    }
+
+    // Launcher para solicitar el permiso en Android 13+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        notificationsEnabled = isGranted
+        if (isGranted) {
+            Toast.makeText(context, "Notificaciones permitidas", Toast.LENGTH_SHORT).show()
+        } else {
+            Toast.makeText(context, "Permiso de notificaciones denegado", Toast.LENGTH_SHORT).show()
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("Configuración", fontWeight = FontWeight.Bold, color = MainPurple) },
                 navigationIcon = {
-                    IconButton(onClick = { }) {
+                    IconButton(onClick = { navController.popBackStack() }) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = MainPurple)
                     }
                 },
@@ -54,26 +89,48 @@ fun SettingsScreen() {
                     .fillMaxSize()
                     .padding(20.dp)
             ) {
+                // Apariencia
                 SettingsToggleItem(
                     icon = Icons.Default.WbSunny,
                     title = "Apariencia",
                     subtitle = "Modo Claro",
-                    initialValue = false
+                    checked = false,
+                    onCheckedChange = { /* Lógica para modo oscuro */ }
                 )
                 
                 Spacer(modifier = Modifier.height(16.dp))
                 
+                // Notificaciones con lógica de permisos
                 SettingsToggleItem(
-                    icon = Icons.Default.Info,
+                    icon = Icons.Default.Notifications,
                     title = "Notificaciones",
                     subtitle = "Caducidad y Recetas",
-                    initialValue = true
+                    checked = notificationsEnabled,
+                    onCheckedChange = { isChecked ->
+                        if (isChecked && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                            val isPermissionGranted = ContextCompat.checkSelfPermission(
+                                context, Manifest.permission.POST_NOTIFICATIONS
+                            ) == PackageManager.PERMISSION_GRANTED
+                            
+                            if (!isPermissionGranted) {
+                                permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                            } else {
+                                notificationsEnabled = true
+                            }
+                        } else {
+                            notificationsEnabled = isChecked
+                        }
+                    }
                 )
 
                 Spacer(modifier = Modifier.height(32.dp))
 
                 Button(
-                    onClick = { },
+                    onClick = { 
+                        navController.navigate("In_session") {
+                            popUpTo(0)
+                        }
+                    },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(56.dp),
@@ -93,9 +150,13 @@ fun SettingsScreen() {
 }
 
 @Composable
-fun SettingsToggleItem(icon: ImageVector, title: String, subtitle: String, initialValue: Boolean) {
-    var checked by remember { mutableStateOf(initialValue) }
-    
+fun SettingsToggleItem(
+    icon: ImageVector, 
+    title: String, 
+    subtitle: String, 
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit
+) {
     Card(
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
@@ -125,7 +186,7 @@ fun SettingsToggleItem(icon: ImageVector, title: String, subtitle: String, initi
             
             Switch(
                 checked = checked,
-                onCheckedChange = { checked = it },
+                onCheckedChange = onCheckedChange,
                 colors = SwitchDefaults.colors(
                     checkedThumbColor = Color.White,
                     checkedTrackColor = Color(0xFF4CAF50),

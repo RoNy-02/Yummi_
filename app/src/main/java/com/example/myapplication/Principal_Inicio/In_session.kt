@@ -1,5 +1,6 @@
 package com.example.myapplication.Principal_Inicio
 
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -13,6 +14,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -20,11 +22,15 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
+import com.example.myapplication.SessionManager
 import com.example.myapplication.componentes.CustomInputField
 import com.example.myapplication.ui.theme.*
 
 @Composable
 fun Inicio_sesion(navController: NavController) {
+    val context = LocalContext.current
+    val sessionManager = remember { SessionManager(context) }
+    
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
 
@@ -109,7 +115,13 @@ fun Inicio_sesion(navController: NavController) {
             Spacer(modifier = Modifier.height(32.dp))
 
             Button(
-                onClick = { navController.navigate("SplashScreen") },
+                onClick = { 
+                    if (sessionManager.login(email, password)) {
+                        navController.navigate("SplashScreen")
+                    } else {
+                        Toast.makeText(context, "Credenciales incorrectas o usuario no registrado", Toast.LENGTH_SHORT).show()
+                    }
+                },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp),

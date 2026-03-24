@@ -1,6 +1,11 @@
 package com.example.myapplication.Principal_Inicio
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -9,12 +14,15 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.DarkMode
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -22,11 +30,29 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
+import coil.compose.rememberAsyncImagePainter
+import com.example.myapplication.SessionManager
 import com.example.myapplication.componentes.CustomBottomBar
 import com.example.myapplication.ui.theme.*
 
 @Composable
 fun Perfil_Screen(navController: NavHostController) {
+    val context = LocalContext.current
+    val sessionManager = remember { SessionManager(context) }
+    val userName = sessionManager.getNombre()
+    val userEmail = sessionManager.getCorreo()
+    var profileImageUri by remember { mutableStateOf(sessionManager.getImage()) }
+
+    val launcher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        uri?.let {
+            val uriString = it.toString()
+            sessionManager.saveImage(uriString)
+            profileImageUri = uriString
+        }
+    }
+
     Scaffold(
         bottomBar = { CustomBottomBar(navController) }
     ) { innerPadding ->
@@ -77,26 +103,46 @@ fun Perfil_Screen(navController: NavHostController) {
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.Center
                     ) {
-                        // Profile Image Placeholder
+                        // Profile Image with change capability
                         Box(
                             modifier = Modifier
                                 .size(100.dp)
-                                .background(Color(0xFFE0E0E0), CircleShape),
+                                .clip(CircleShape)
+                                .background(Color(0xFFE0E0E0))
+                                .clickable { launcher.launch("image/*") },
                             contentAlignment = Alignment.Center
                         ) {
-                            Icon(Icons.Default.Person, contentDescription = null, modifier = Modifier.size(60.dp), tint = Color.Gray)
+                            if (profileImageUri != null) {
+                                Image(
+                                    painter = rememberAsyncImagePainter(profileImageUri),
+                                    contentDescription = null,
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentScale = ContentScale.Crop
+                                )
+                            } else {
+                                Icon(Icons.Default.Person, contentDescription = null, modifier = Modifier.size(60.dp), tint = Color.Gray)
+                            }
+                            // Overlay for edit
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(Color.Black.copy(alpha = 0.2f)),
+                                contentAlignment = Alignment.BottomCenter
+                            ) {
+                                Icon(Icons.Default.Edit, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp).padding(bottom = 4.dp))
+                            }
                         }
                         
                         Spacer(modifier = Modifier.height(16.dp))
                         
                         Text(
-                            text = "Alumno UTSH",
+                            text = userName,
                             fontWeight = FontWeight.Bold,
                             fontSize = 20.sp,
                             textAlign = TextAlign.Center
                         )
                         Text(
-                            text = "5-TSU-DSM-G2",
+                            text = userEmail,
                             fontSize = 14.sp,
                             color = TextGray,
                             textAlign = TextAlign.Center
@@ -104,12 +150,15 @@ fun Perfil_Screen(navController: NavHostController) {
                         
                         Spacer(modifier = Modifier.height(24.dp))
                         
-                        // Estadísticas centradas
+                        // Estadísticas
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceEvenly,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
+                            StatItem("12", "NIVEL")
+                            StatItem("450", "ECO-PUNTOS")
+                            StatItem("8", "RECETAS")
                         }
                     }
                 }

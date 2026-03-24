@@ -1,5 +1,6 @@
 package com.example.myapplication.Principal_Inicio
 
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -12,6 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
@@ -20,10 +22,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
+import com.example.myapplication.SessionManager
 import com.example.myapplication.ui.theme.*
 
 @Composable
 fun RegisterScreen(navController: NavHostController) {
+    val context = LocalContext.current
+    val sessionManager = remember { SessionManager(context) }
+    
     var nombre by remember { mutableStateOf("") }
     var correo by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -88,7 +94,7 @@ fun RegisterScreen(navController: NavHostController) {
             InputField(
                 value = correo,
                 onValueChange = { correo = it },
-                label = "Correo Institucional",
+                label = "Correo Electronico",
                 icon = Icons.Default.Email
             )
             Spacer(modifier = Modifier.height(16.dp))
@@ -117,7 +123,19 @@ fun RegisterScreen(navController: NavHostController) {
             Spacer(modifier = Modifier.height(32.dp))
 
             Button(
-                onClick = { },
+                onClick = { 
+                    if (nombre.isNotEmpty() && correo.isNotEmpty() && password.isNotEmpty()) {
+                        if (password == confirmPassword) {
+                            sessionManager.saveUser(nombre, correo, password)
+                            Toast.makeText(context, "Registro exitoso", Toast.LENGTH_SHORT).show()
+                            navController.navigate("In_session")
+                        } else {
+                            Toast.makeText(context, "Las contraseñas no coinciden", Toast.LENGTH_SHORT).show()
+                        }
+                    } else {
+                        Toast.makeText(context, "Completa todos los campos", Toast.LENGTH_SHORT).show()
+                    }
+                },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp),

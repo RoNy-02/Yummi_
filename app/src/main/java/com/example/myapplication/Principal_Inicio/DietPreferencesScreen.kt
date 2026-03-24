@@ -29,7 +29,7 @@ fun DietPreferencesScreen(navController: NavHostController) {
             TopAppBar(
                 title = { Text("Preferencias Dietéticas", fontWeight = FontWeight.Bold, color = MainPurple) },
                 navigationIcon = {
-                    IconButton(onClick = { }) {
+                    IconButton(onClick = { navController.popBackStack() }) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = MainPurple)
                     }
                 },
@@ -79,7 +79,7 @@ fun DietPreferencesScreen(navController: NavHostController) {
                 Spacer(modifier = Modifier.height(24.dp))
 
                 Button(
-                    onClick = { },
+                    onClick = { navController.popBackStack() },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(56.dp),
